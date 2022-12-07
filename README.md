@@ -1,21 +1,25 @@
 # Using VFs in OpenShift with SRIOV and DPDK
 
-## Prereques
+## Prerequisites  
 
 * **butane** - https://github.com/coreos/butane/releases
 
 ## Setup
 
-HP DL360PG10
-Intel ixgbe card
-Fedora 36
-OpenShift 4.11
+The following was tested with the following:
+
+* HP DL360p Gen8
+* Intel X520-DA1 10G network card (Intel 82599ES Chip-set)
+* Fedora 36 as host machine
+* OpenShift 4.11 - Single Node OpenShift Cluster
 
 ## Configuration
 
-### Enable VFs and SRIOV 
+### Enable VFs and SRIOV on HOST hardware
 
-Create two files:
+The following steps must be taken to configure the HOST hardware to make SRIOV VFs available to a Virtual Machine. The following steps were used on a Fedora 36 Workstation install. The instructions also assume the use of Intel 82599 card(s) for creating SRIOV VFs. 
+
+Create the following files:
 
 /etc/modules.d/ixgbe_sriov.conf
 ```conf
@@ -50,7 +54,7 @@ Ensure IOMMU is enabled at boot time
 grubby --args="intel_iommu=on iommu=pt rd.driver.pre=vfio-pci --update-kernel=ALL"
 ```
 
-Reboot your host node and then run 
+Reboot your host node to apply the configuration above. Once the host has completed the reboot run `lspci` to validate that virtual functions were created.
 
 ```
 $ sudo lspci
@@ -167,7 +171,7 @@ spec:
   kernelArguments:
       - modprobe.blacklist=ixgbevf
       - intel_iommu=on
-      - hugepages=10
+      - hugepages=1024
 ```
 
 configure vfio
@@ -228,4 +232,64 @@ oc create sa sriov-device-plugin-sa
 oc adm policy add-scc-to-user privileged system:serviceaccount:sriovdp:sriov-device-plugin-sa
 oc create -f templates/sriov-device-plugin-config.yml
 oc create -f templates/sriov-device-plugin-daemonset.yml
+```
+
+## Test deployment
+
+To test that this is working we will use a pod with `testpmd` installed
+
+```shell
+$ oc create template/dpdk-pod.yml
+$ oc rsh po/testpmd
+# testpmd
+EAL: Detected CPU lcores: 8
+EAL: Detected NUMA nodes: 1
+EAL: Detected shared linkage of DPDK
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+EAL: Selected IOVA mode 'PA'
+EAL: No available 1048576 kB hugepages reported
+EAL: VFIO support initialized
+EAL: Probe PCI driver: net_virtio (1af4:1041) device: 0000:01:00.0 (socket 0)
+eth_virtio_pci_init(): Failed to init PCI device
+EAL: Requested device 0000:01:00.0 cannot be used
+EAL: Using IOMMU type 1 (Type 1)
+EAL: Probe PCI driver: net_ixgbe_vf (8086:10ed) device: 0000:08:00.0 (socket 0)
+EAL: Probe PCI driver: net_ixgbe_vf (8086:10ed) device: 0000:09:00.0 (socket 0)
+TELEMETRY: No legacy callbacks, legacy socket not created
+testpmd: create a new mbuf pool <mb_pool_0>: n=203456, size=2176, socket=0
+testpmd: preferred mempool ops selected: ring_mp_mc
+Configuring Port 0 (socket 0)
+Port 0: 02:09:C0:B2:EC:44
+Configuring Port 1 (socket 0)
+Port 1: 02:09:C0:4F:24:DB
+Checking link statuses...
+Done
+No commandline core given, start packet forwarding
+io packet forwarding - ports=2 - cores=1 - streams=2 - NUMA support enabled, MP allocation mode: native
+Logical Core 1 (socket 0) forwards packets on 2 streams:
+  RX P=0/Q=0 (socket 0) -> TX P=1/Q=0 (socket 0) peer=02:00:00:00:00:01
+  RX P=1/Q=0 (socket 0) -> TX P=0/Q=0 (socket 0) peer=02:00:00:00:00:00
+
+  io packet forwarding packets/burst=32
+  nb forwarding cores=1 - nb forwarding ports=2
+  port 0: RX queue number: 1 Tx queue number: 1
+    Rx offloads=0x0 Tx offloads=0x0
+    RX queue: 0
+      RX desc=512 - RX free threshold=32
+      RX threshold registers: pthresh=0 hthresh=0  wthresh=0
+      RX Offloads=0x0
+    TX queue: 0
+      TX desc=512 - TX free threshold=32
+      TX threshold registers: pthresh=32 hthresh=0  wthresh=0
+      TX offloads=0x0 - TX RS bit threshold=32
+  port 1: RX queue number: 1 Tx queue number: 1
+    Rx offloads=0x0 Tx offloads=0x0
+    RX queue: 0
+      RX desc=512 - RX free threshold=32
+      RX threshold registers: pthresh=0 hthresh=0  wthresh=0
+      RX Offloads=0x0
+    TX queue: 0
+      TX desc=512 - TX free threshold=32
+      TX threshold registers: pthresh=32 hthresh=0  wthresh=0
+      TX offloads=0x0 - TX RS bit threshold=32
 ```
