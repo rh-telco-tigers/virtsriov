@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: dpdk
+  name: testpmd
+  namespace: sriovdp
+spec:
+  containers:
+    - command:
+        - /bin/bash
+        - -c
+        - sleep INF
+      image: registry.redhat.io/openshift4/dpdk-base-rhel8
+      imagePullPolicy: Always
+      name: dpdk
+      resources:
+        limits:
+          cpu: "2"
+          hugepages-2Mi: 1Gi
+          memory: 2Gi
+          intel.com/intel_sriov_dpdk: 1
+        requests:
+          cpu: "2"
+          hugepages-2Mi: 1Gi
+          memory: 2Gi
+          intel.com/intel_sriov_dpdk: 1
+      securityContext:
+        capabilities:
+          add:
+            - IPC_LOCK
+            - SYS_RAWIO
+            - SYS_RESOURCE
+            - NET_RAW
+            - SYS_ADMIN
+            - NET_ADMIN
+        runAsUser: 0
+        # privileged: true
+      volumeMounts:
+        - mountPath: /mnt/huge
+          name: hugepages
+        - mountPath: /dev
+          name: hostdev
+  terminationGracePeriodSeconds: 5
+  volumes:
+    - emptyDir:
+        medium: HugePages
+      name: hugepages
+    - name: hostdev
+      hostPath:
+        path: /dev
+        type: ''
