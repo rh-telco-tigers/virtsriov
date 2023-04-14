@@ -1,5 +1,7 @@
 # Using VFs in OpenShift with SRIOV and DPDK
 
+It is possible to use Virtual Functions (vfs) passed through to an OpenShift worker node and then manage them as a VF within OpenShift. This is NOT a supported configuration, but can be completed by following the process below. Note that the instructions below are designed for setting up a small test environment and will need to be modified to meet your specific needs.
+
 ## Prerequisites  
 
 * **butane** - https://github.com/coreos/butane/releases
@@ -75,6 +77,8 @@ The output above will be used to configure your virtual machine(s) going forward
 
 ## VM Configuration
 
+Instructions below are based on using KVM as your virtual machine hypervisor. You will need to modify the settings below based on your specific needs.
+
 You will need to edit your vm definition and add an IOMMU to the devices section:
 
 ```xml
@@ -110,6 +114,9 @@ NOW we can add the virtual functions to our vm. In the devices section add the f
 
 Update source address to match the device you are attempting to pass in.
 
+## Deploying OpenShift
+
+This document will not cover the install of OpenShift. Suggest that you use the [Assisted Installer](https://docs.openshift.com/container-platform/4.12/installing/installing_on_prem_assisted/installing-on-prem-assisted.html) or the [Agent Installer](https://docs.openshift.com/container-platform/4.12/installing/installing_with_agent_based_installer/preparing-to-install-with-agent-based-installer.html) process for deploying your new cluster.
 
 ## Configuring OpenShift
 
@@ -174,7 +181,7 @@ spec:
       - hugepages=1024
 ```
 
-configure vfio
+### configure vfio
 
 If you are not using a Intel82599 card, you will need to update the vfiopci.bu file with the proper PCI device ID and then generate a new vfio=worker-mc.yaml file
 
