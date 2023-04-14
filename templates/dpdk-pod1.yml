@@ -32,6 +32,8 @@ spec:
           add:
             - IPC_LOCK
             - SYS_RESOURCE
+        runAsUser: 0
+        privileged: true
       volumeMounts:
         - mountPath: /mnt/huge
           name: hugepages
